@@ -33,9 +33,9 @@ class AuthControllers {
         try {
             const {username , password} = req.body
             const user = await userModel.findOne({username})
-            if(!user) throw {message : 'username or password is wrong!' , status : 400}
+            if(!user) throw {message : 'username or password is wrong!' , status : 401}
             const validatePassword = bcrypt.compareSync(password , user.password)
-            if(!validatePassword) throw {message : 'username or password is wrong!' , status : 400}
+            if(!validatePassword) throw {message : 'username or password is wrong!' , status : 401}
 
             const token = createToken({_id : user._id.toString()})
             user.token.push(token)

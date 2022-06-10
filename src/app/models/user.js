@@ -17,6 +17,11 @@ const userSchema = new mongoose.Schema({
         trim : true,
         unique : true
     },
+    avatar : {
+        type : String,
+        default : ''
+    }
+    ,
     mobile : {
         type : String,
         required : true,
@@ -38,7 +43,8 @@ const userSchema = new mongoose.Schema({
         default : []
     },
     team : {
-        type : [mongoose.SchemaTypes.ObjectId],
+        type : [mongoose.Types.ObjectId],
+        ref : 'team',
         default : []
     },
     role : {
