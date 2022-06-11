@@ -1,25 +1,88 @@
+import teamModel from "../models/team.js"
+import userModel from "../models/user.js"
+
 class TeamControllers {
-    createTeam() {
-
+    async createTeam(req , res , next) {
+        try {
+            const team = await teamModel.create({...req.body , owner : req.userId , members : [req.userId]})
+            console.log('team')
+            const user = await userModel.findByIdAndUpdate(req.userId , {$addToSet : {team: team._id}})
+            console.log('user')
+            res.status(201).send({
+                status : 201,
+                success : true,
+                team : team
+            })
+        } catch (error) {
+            next(error)
+        }
     }
-    getAllTeams() {
-
+    async getAllTeams(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }
     }
-    getTeamById() {
-
+    async getTeamById(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }
     }
-    inviteUserToTeam() {
-
+    async inviteUserToTeam(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }
     }
-    removeUserFromTeam() {
-
+    async removeUserFromTeam(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }
     }
-    updateTeam() {
-        
+    async updateTeam(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }    
     }
-    removeTeam() {
-
+    async removeTeam(req , res , next) {
+        try {
+            
+            res.status().send({
+                status : 20,
+                success : true
+            })
+        } catch (error) {
+            next(error)
+        }
     }
 }
 
-export default TeamControllers
+export default new TeamControllers()

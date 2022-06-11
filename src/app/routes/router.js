@@ -8,7 +8,7 @@ import checkAuthToken from '../middlewares/checkAuthToken.js'
 const router = express.Router()
 
 router.use('/user' , checkAuthToken , userRouter)
-router.use('/project' , projectRouter)
+router.use('/project' , checkAuthToken , projectRouter)
 router.use('/team' , teamRouter)
 router.use('/auth' , authRouter)
 

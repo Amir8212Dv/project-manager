@@ -1,4 +1,4 @@
-import mongoose from "mongoose"
+import path from 'path'
 import userModel from "../models/user.js"
 
 class UserControllers {
@@ -14,13 +14,29 @@ class UserControllers {
             next(error)
         }
     }
+    async uploadAvatar(req , res , next) {
+        try {  
+
+            const user = await userModel.findByIdAndUpdate(req.userId , {avatar : path.join('images' , req.file.filename)} , {returnDocument : 'after'})
+    
+            if(!user) throw {message : 'upload avatar faild' , status : 500}
+            res.status(201).send({
+                status : 201,
+                success : true,
+                images : `${req.protocol}://${req.headers.host}/${user.avatar.replace('\\' , '/')}`
+            })
+            
+        } catch (error) {
+            next(error)
+        }
+    }
     async updateProfile(req , res , next) {
         try {
             const user = await userModel.findByIdAndUpdate(req.userId , req.updateData , {returnDocument : 'after'})
             res.send({
                 status : 200,
                 success : true,
-                user
+                message : 'image uploaded successfully'
             })
 
         } catch (error) {

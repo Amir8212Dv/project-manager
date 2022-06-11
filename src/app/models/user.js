@@ -19,7 +19,6 @@ const userSchema = new mongoose.Schema({
     },
     avatar : {
         type : String,
-        default : ''
     }
     ,
     mobile : {
@@ -39,7 +38,7 @@ const userSchema = new mongoose.Schema({
         unique : true
     },
     skills : {
-        type : Array,
+        type : [String],
         default : []
     },
     team : {
@@ -52,7 +51,7 @@ const userSchema = new mongoose.Schema({
         default : 'USER'
     },
     token : {
-        type : Array,
+        type : [String],
         default : []
     }
 

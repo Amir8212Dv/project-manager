@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken'
 import userModel from '../models/user.js'
 const checkAuthToken = async (req , res , next) => {
-    const token = req.headers.authorization.split('Bearer ')[1]
     try {
+        const token = req.headers.authorization.split('Bearer ')[1]
         const checkToken = jwt.verify(token , process.env.SECRETE_KEY || 'secretekey')
         if(!checkToken) throw ''
         const user = await userModel.findById(checkToken._id)

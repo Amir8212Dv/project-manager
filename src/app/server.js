@@ -15,7 +15,7 @@ class Application {
     configApplication() {
         this.#app.use(express.json())
         this.#app.use(express.urlencoded({extended : true}))
-        this.#app.use(express.static(path.join(process.execPath , '..' , '..' , 'public')))
+        this.#app.use(express.static(path.join(process.argv[1] , '..' , '..' , 'public')))
     }
     createServer(PORT) {
         this.#app.listen(PORT , (error) => {

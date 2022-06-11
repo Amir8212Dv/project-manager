@@ -2,15 +2,19 @@ import userModel from '../models/user.js'
 import createToken from '../../utils/createToken.js'
 import hashPassword from '../../utils/hashPassword.js'
 import bcrypt from 'bcrypt'
+import multer from 'multer'
+
+
 class AuthControllers {
     register(req , res , next) {
         try {
 
-            const { first_name , last_name , username , password , mobile , email , skills , role} = req.body
+            const { first_name , last_name , username , password , mobile , email , role} = req.body
+            if(!first_name || !last_name || !username || !password || !mobile || !email || !role) throw {message : 'please enter all fields' , status : 400}
 
             const hashedPassword = hashPassword(password)
-           
-            userModel.create({first_name , last_name , username , password : hashedPassword , mobile , email , skills , role , token : []})
+            
+            userModel.create({first_name , last_name , username , password : hashedPassword , mobile , email , role , token : []})
                 .then(async user => {
                     const token = createToken({_id : user._id.toString()})
                     user.token.push(token)

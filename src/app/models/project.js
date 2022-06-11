@@ -15,14 +15,14 @@ const projectSchema = new mongoose.Schema({
         type : String,
     },
     tags : {
-        type : Array,
+        type : [String],
     },
     owner : {
-        type : mongoose.SchemaTypes.ObjectId,
+        type : mongoose.Types.ObjectId,
         required : true,
     },
     team : {
-        type : [mongoose.SchemaTypes.ObjectId],
+        type : [mongoose.Types.ObjectId],
         default : []
     },
     private : {
