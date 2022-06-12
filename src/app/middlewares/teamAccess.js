@@ -1,4 +1,4 @@
-import teamModel from "../models/team"
+import teamModel from "../models/team.js"
 
 const deleteTeamAccess = async (req , res , next) => {
     try {

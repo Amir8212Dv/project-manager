@@ -21,7 +21,7 @@ class ProjectControllers {
     }
     async uploadImage(req , res , next) {
         try {
-            const project = await projectModel.findByIdAndUpdate(req.params.projectId , {image : path.join('images' , req.file.filename)})
+            const project = await projectModel.findByIdAndUpdate(req.params.projectId , {image : path.join('images' , req.file.filename)} , {returnDocument : 'after'})
 
             res.status(201).send({
                 status : 201,
