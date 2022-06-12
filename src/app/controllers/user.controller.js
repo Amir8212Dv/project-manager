@@ -2,6 +2,7 @@ import path from 'path'
 import projectModel from '../models/project.js'
 import teamModel from '../models/team.js'
 import userModel from "../models/user.js"
+import fs from 'fs'
 
 class UserControllers {
     async getProfile(req , res , next) {
@@ -77,9 +78,16 @@ class UserControllers {
         try {
             const deletedUser = await userModel.findByIdAndDelete(req.userId)
             const deleteTeams = await teamModel.deleteMany({owner : req.userId})
-            const deleteProjects = await projectModel.deleteMany({owner : req.userId})
+            const deleteProjects = await projectModel.find({owner : req.userId})
+            await projectModel.deleteMany({owner : req.userId})
 
             const deleteFromTeamMembers = await teamModel.updateMany({members : {$in : req.userId}} , {$pull : {members : req.userId}})
+
+            console.log(process.argv[1] , deletedUser)
+            if(deletedUser.avatar) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , deletedUser.avatar))
+            deleteProjects.map(project => {
+                if(project.image) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , project.image))
+            })
 
             res.send({
                 status : 200,

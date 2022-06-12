@@ -16,6 +16,8 @@ router.post('/skills' , UserControllers.addSkills)
 
 router.delete('/skills' , UserControllers.removeSkills)
 
+router.delete('/' , UserControllers.deleteUser)
+
 router.post('/acceptInviteToTeam' , UserControllers.acceptInviteToTeam)
 
 router.post('/rejectInviteToTeam' , UserControllers.rejectInviteToTeam)

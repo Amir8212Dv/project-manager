@@ -2,6 +2,7 @@ import projectModel from "../models/project.js"
 import userModel from "../models/user.js"
 import teamModel from "../models/team.js"
 import path from 'path'
+import fs from 'fs'
 
 class ProjectControllers {
     async createProject(req , res , next) {
@@ -36,7 +37,8 @@ class ProjectControllers {
 
     async getAllProjects(req , res , next) {
         try {
-            const projects = await projectModel.find({private : false , show : true})
+            const user = await userModel.findById(req.userId , {team : 1})
+            const projects = await projectModel.find({$or : [{owner : req.userId} , {$in : {team : user.team}}]})
 
             res.send({
                 status : 200,
@@ -113,6 +115,7 @@ class ProjectControllers {
             const deletedProject = await projectModel.findByIdAndDelete(req.params.projectId)
             const deleteProjectFromTeam = await teamModel.updateOne({_id : deletedProject.team} , {$pull : {projects : deletedProject._id}})
 
+            if(deletedProject.image) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , deletedProject.image))
             res.send({
                 status: 200,
                 success : true,
