@@ -9,7 +9,7 @@ const router = express.Router()
 
 router.use('/user' , checkAuthToken , userRouter)
 router.use('/project' , checkAuthToken , projectRouter)
-router.use('/team' , teamRouter)
+router.use('/team' , checkAuthToken , teamRouter)
 router.use('/auth' , authRouter)
 
 export default router

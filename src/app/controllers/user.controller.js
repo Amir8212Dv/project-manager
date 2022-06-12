@@ -1,4 +1,6 @@
 import path from 'path'
+import projectModel from '../models/project.js'
+import teamModel from '../models/team.js'
 import userModel from "../models/user.js"
 
 class UserControllers {
@@ -32,7 +34,7 @@ class UserControllers {
     }
     async updateProfile(req , res , next) {
         try {
-            const user = await userModel.findByIdAndUpdate(req.userId , req.updateData , {returnDocument : 'after'})
+            const user = await userModel.updateOne({_id : req.userId} , req.updateData , {returnDocument : 'after'})
             res.send({
                 status : 200,
                 success : true,
@@ -71,9 +73,28 @@ class UserControllers {
             next(error)
         }
     }
+    async deleteUser(req , res , next) {
+        try {
+            const deletedUser = await userModel.findByIdAndDelete(req.userId)
+            const deleteTeams = await teamModel.deleteMany({owner : req.userId})
+            const deleteProjects = await projectModel.deleteMany({owner : req.userId})
+
+            const deleteFromTeamMembers = await teamModel.updateMany({members : {$in : req.userId}} , {$pull : {members : req.userId}})
+
+            res.send({
+                status : 200,
+                success : true,
+                deletedUser
+            })
+        } catch (error) {
+            next(error)
+        }
+    }
+
     async acceptInviteToTeam(req , res , next) {
         try {
             const user = await userModel.findByIdAndUpdate(req.userId , {$addToSet : {team : req.body.teamId}} , {returnDocument : 'after'})
+            const team = await teamModel.updateOne({_id : req.body.teamId} , {$addToSet : {members : req.userId}})
             res.send({
                 status : 200,
                 success : true , 

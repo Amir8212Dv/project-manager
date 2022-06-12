@@ -22,8 +22,7 @@ const projectSchema = new mongoose.Schema({
         required : true,
     },
     team : {
-        type : [mongoose.Types.ObjectId],
-        default : []
+        type : mongoose.Types.ObjectId,
     },
     private : {
         type : Boolean,
