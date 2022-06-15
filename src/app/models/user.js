@@ -1,5 +1,25 @@
 import mongoose from "mongoose";
 
+const inviteRequests = new mongoose.Schema({
+    teamId : {
+        type : mongoose.Types.ObjectId,
+        required : true
+    },
+    from : {
+        type : String,
+        required : true,
+        trim : true,
+        lowercase : true
+    },
+    status : {
+        type : String,
+        default : 'PENDING'
+    }
+    
+} , {
+    timestamps : true
+})
+
 const userSchema = new mongoose.Schema({
     first_name : {
         type : String,
@@ -53,7 +73,8 @@ const userSchema = new mongoose.Schema({
     token : {
         type : [String],
         default : []
-    }
+    },
+    inviteRequests : inviteRequests
 
 } , {
     timestamps : true
