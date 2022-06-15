@@ -50,11 +50,29 @@ class TeamControllers {
         try {
             
             const team = await teamModel.findById(req.params.teamId)
-            if(team.owner !== req.userId) throw {message : 'access denied' , status : 400}
+            if(!team) throw {message : 'team not found' , status : 400}
+            if(team.owner.toString() !== req.userId) throw {message : "only teams owner can invite someone to team"}
+            if(team.members.includes(req.body.userId)) throw {messaage : 'the user is already in team' , status : 400}
+
+            const user = await userModel.findById(req.body.userId)
+            if(!user) throw {message : 'user not found' , status : 400}
+            
+            const requestPermission = user.inviteRequests.find(request => 
+                req.params.teamId === request.teamId.toString() && request.status === 'PENDING'
+            )
+                
+            if(requestPermission) throw {message : "you can't invite user to a team twice!" , status : 400}
+
+            user.inviteRequests.push({
+                teamId : team._id,
+                from : req.userId
+            })
+            await user.save()
 
             res.status(200).send({
                 status : 200,
-                success : true
+                success : true,
+                invite : user.inviteRequests[user.inviteRequests.length - 1]
             })
         } catch (error) {
             next(error)

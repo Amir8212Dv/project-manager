@@ -3,6 +3,7 @@ import projectModel from '../models/project.js'
 import teamModel from '../models/team.js'
 import userModel from "../models/user.js"
 import fs from 'fs'
+import mongoose from 'mongoose'
 
 class UserControllers {
     async getProfile(req , res , next) {
@@ -101,9 +102,23 @@ class UserControllers {
 
     async acceptInviteToTeam(req , res , next) {
         try {
-            const team = await teamModel.findByIdAndUpdate(req.body.teamId , {$addToSet : {members : req.userId}})
-            if(!team) throw {message : 'there is no team with this id'}
-            const user = await userModel.findByIdAndUpdate(req.userId , {$addToSet : {team : req.body.teamId}} , {returnDocument : 'after'})
+            
+            const user = await userModel.findOne({'inviteRequests._id' : req.params.inviteId , owner : req.userId})
+            if(!user) throw {message : 'user with this inviteId not found' , status : 400}
+
+            console.log(user)
+            await user.inviteRequests.forEach(async request => {
+                if(request._id.toString() === req.params.inviteId) {
+                    if(request.status === 'ACCEPTED') throw {message : 'user is already in team' , status :400}
+                    if(request.status === 'REJECTED') throw {message : 'this invite not exists any more'}
+                    request.status = 'ACCEPTED'
+                    const team = await teamModel.findByIdAndUpdate(request.teamId , {$addToSet : {members : req.userId}})
+                    user.team.push(request.teamId)
+                    await user.save()
+                }
+            })
+
+            console.log(user)
             res.send({
                 status : 200,
                 success : true , 
@@ -116,6 +131,58 @@ class UserControllers {
     async rejectInviteToTeam(req , res , next) {
         try {
             
+            const user = await userModel.findOne({owner : req.userId , 'inviteRequests._id': req.params.inviteId})
+            if(!user) throw {message : 'use with this inviteId not found' , status : 400}
+
+            await user.inviteRequests.forEach(async request => {
+                if(request._id.toString() === req.params.inviteId) {
+                    if(request.status === 'ACCEPTED') throw {message : 'this invite is already accepted' , status : 400}
+                    user.inviteRequests = user.inviteRequests.filter(re => re._id !== request._id)
+                    await user.save()
+                }
+            })
+
+            res.send({
+                status : 200,
+                success : true,
+                message : 'invite request to join team rejected successfully !'
+            })
+        } catch (error) {
+            next(error)
+        }
+    }
+
+    async getInviteRequests(req ,res , next) {
+        try {
+            const user = await userModel.aggregate([
+                {
+                    $match : { _id : mongoose.Types.ObjectId(req.userId) }
+                },
+                {
+                    $project : {
+                        inviteRequests : 1,
+    
+                        _id : 0,
+                        requests : {
+                            $filter : {
+                                input : '$inviteRequests',
+                                as : 'invites',
+                                cond : {
+                                    $eq : ['$$invites.status' , req.query.status]
+                                }
+                            }
+                        }
+                    }
+                }
+
+            ])
+            console.log(req.query.status)
+            
+            res.send({
+                status : 200,
+                success : true,
+                inviteRequests : req.query.status ? user[0].requests : user[0].inviteRequests
+            })
         } catch (error) {
             next(error)
         }

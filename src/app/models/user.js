@@ -74,7 +74,7 @@ const userSchema = new mongoose.Schema({
         type : [String],
         default : []
     },
-    inviteRequests : inviteRequests
+    inviteRequests : [inviteRequests]
 
 } , {
     timestamps : true

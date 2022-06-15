@@ -8,19 +8,22 @@ const router = express.Router()
 
 router.get('/' , UserControllers.getProfile)
 
+router.get('/inviteRequests' , UserControllers.getInviteRequests)
+
 router.patch('/profile'  , validateUserData , sortBodyData , UserControllers.updateProfile)
 
 router.post('/avatar' , multer.single('image') , UserControllers.uploadAvatar )
 
 router.post('/skills' , UserControllers.addSkills)
 
+router.post('/acceptInviteToTeam/:inviteId' , UserControllers.acceptInviteToTeam)
+
+router.post('/rejectInviteToTeam/:inviteId' , UserControllers.rejectInviteToTeam)
+
 router.delete('/skills' , UserControllers.removeSkills)
 
 router.delete('/' , UserControllers.deleteUser)
 
-router.post('/acceptInviteToTeam' , UserControllers.acceptInviteToTeam)
-
-router.post('/rejectInviteToTeam' , UserControllers.rejectInviteToTeam)
 
 
 export default router
