@@ -20,6 +20,13 @@ class ProjectControllers {
             next(error)
         }
     }
+
+
+
+    // check for projects existense
+    // send link for images when  sending  get  request
+
+
     async uploadImage(req , res , next) {
         try {
             const project = await projectModel.findByIdAndUpdate(req.params.projectId , {image : path.join('images' , req.file.filename)} , {returnDocument : 'after'})
@@ -51,12 +58,12 @@ class ProjectControllers {
     }
     async getProjectById(req , res , next) {
         try {
-            const project = await projectModel.findById(req.params.projectId)
+            const project = await projectModel.find({_id : req.params.projectId , owner : userId})
             if(!project) throw {message : 'project not found' , status : 400}
-            if(project.private || !project.show) {
-                const user = await userModel.findById(req.userId)
-                if (!project.owner === user._id || !user.team.includes(project.team)) throw {message : 'this project is private' , status : 400}
-            }
+            // if(project.private || !project.show) {
+            //     const user = await userModel.findById(req.userId)
+            //     if (!project.owner === user._id || !user.team.includes(project.team)) throw {message : 'this project is private' , status : 400}
+            // }
             res.send({
                 status : 200,
                 success : true,

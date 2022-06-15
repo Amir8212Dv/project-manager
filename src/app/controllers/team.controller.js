@@ -1,14 +1,14 @@
+import mongoose from "mongoose"
 import projectModel from "../models/project.js"
 import teamModel from "../models/team.js"
 import userModel from "../models/user.js"
 
 class TeamControllers {
-    async createTeam(req , res , next) {
+    async createTeam(req , res , next) { // completed
         try {
-            const team = await teamModel.create({...req.body , owner : req.userId , members : [req.userId]})
-            console.log('team')
+            const team = await teamModel.create({...req.teamData , owner : req.userId , members : [req.userId]})
             const user = await userModel.updateOne({_id : req.userId} , {$addToSet : {team: team._id}})
-            console.log('user')
+            console.log(user)
             res.status(201).send({
                 status : 201,
                 success : true,
@@ -21,7 +21,7 @@ class TeamControllers {
     async getAllTeams(req , res , next) {
         try {
             
-            const teams = await teamModel.find({})
+            const teams = await teamModel.find({owner : userId})
             res.status().send({
                 status : 20,
                 success : true,
@@ -31,10 +31,12 @@ class TeamControllers {
             next(error)
         }
     }
-    async getTeamById(req , res , next) {
+    async getTeamByIdOrName(req , res , next) {
         try {
-            const team = await teamModel.findById(req.params.teamId)
+            const searchTeamBy = mongoose.isValidObjectId(req.params.teamId) ? {_id : req.params.teamId} : {name : req.params.teamId}
+            const team = await teamModel.find(searchTeamBy)
             
+            if(!team) throw {message : `there is not team with this data`}
             res.status().send({
                 status : 20,
                 success : true,
@@ -58,16 +60,19 @@ class TeamControllers {
             next(error)
         }
     }
-    async removeUserFromTeam(req , res , next) {
+    async removeUserFromTeam(req , res , next) { // completed
         try {
+            const team = await teamModel.findOne({owner : req.userId , _id : req.params.teamId})
             
-            const team = await teamModel.findById(req.params.teamId)
-            if(team.owner !== req.userId) throw {message : 'access denied' , status : 400}
-            team.members = team.members.filter(member => member !== req.body.userId)
+            if(!team) throw {message : 'there is no team with this id' , status : 400}
+            if(team.owner.toString() === req.body.userId) throw {message : "owner can't be removed from team" , status : 400}
+            
+            team.members = team.members.filter(member => member.toString() !== req.body.userId)
             await team.save()
 
-            const user = await userModel.findByIdAndUpdate(req.body.userId , {$pull : {team : req.params.teamId}})
-
+            const user = await userModel.updateOne({_id : req.body.userId} , {$pull : {team : req.params.teamId}})
+            if(!user.matchedCount) throw {message : 'there is no user with this id' , status : 400}
+            
             res.status(200).send({
                 status : 200,
                 success : true,
@@ -77,14 +82,16 @@ class TeamControllers {
             next(error)
         }
     }
-    async updateTeam(req , res , next) {
+    async updateTeam(req , res , next) { // completed
         try {
 
-            const updateData = {}
-            if(req.body.name) updateData.name = req.body.name
-            if(req.body.description) updateData.description = req.body.description
+            const team = await teamModel.findOneAndUpdate(
+                {$and : [{_id : req.params.teamId} , {$or : [{owner : req.userId} , {members : req.userId}]}]} ,
+                req.teamData ,
+                {returnDocument : 'after'}
+            )
 
-            const team = teamModel.findByIdAndUpdate(req.params.teamId , updateData , {returnDocument : 'after'})
+            if (!team) throw {message : 'update team faild' , status : 400}
             
             res.status(200).send({
                 status : 200,
@@ -95,7 +102,7 @@ class TeamControllers {
             next(error)
         }    
     }
-    async removeTeam(req , res , next) {
+    async removeTeam(req , res , next) { // completed
         try {
             
             const deletedTeam = await teamModel.findByIdAndDelete(req.params.teamId)

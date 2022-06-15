@@ -101,8 +101,9 @@ class UserControllers {
 
     async acceptInviteToTeam(req , res , next) {
         try {
+            const team = await teamModel.findByIdAndUpdate(req.body.teamId , {$addToSet : {members : req.userId}})
+            if(!team) throw {message : 'there is no team with this id'}
             const user = await userModel.findByIdAndUpdate(req.userId , {$addToSet : {team : req.body.teamId}} , {returnDocument : 'after'})
-            const team = await teamModel.updateOne({_id : req.body.teamId} , {$addToSet : {members : req.userId}})
             res.send({
                 status : 200,
                 success : true , 
