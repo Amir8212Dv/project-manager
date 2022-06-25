@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const inviteRequests = new mongoose.Schema({
-    teamId : {
-        type : mongoose.Types.ObjectId,
+    teamName : {
+        type : String,
         required : true
     },
     from : {
@@ -35,6 +35,7 @@ const userSchema = new mongoose.Schema({
         type : String,
         required : true,
         trim : true,
+        lowercase : true,
         unique : true
     },
     avatar : {
@@ -55,15 +56,19 @@ const userSchema = new mongoose.Schema({
     email : {
         type : String,
         trim : true,
+        lowercase : true,
         unique : true
     },
     skills : {
         type : [String],
         default : []
     },
-    team : {
-        type : [mongoose.Types.ObjectId],
-        ref : 'team',
+    teams : {
+        type : [String],
+        default : []
+    },
+    projects : {
+        type : [String],
         default : []
     },
     role : {
@@ -74,7 +79,7 @@ const userSchema = new mongoose.Schema({
         type : [String],
         default : []
     },
-    inviteRequests : inviteRequests
+    inviteRequests : [inviteRequests]
 
 } , {
     timestamps : true

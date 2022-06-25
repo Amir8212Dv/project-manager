@@ -5,6 +5,7 @@ const teamSchema = new mongoose.Schema({
         type : String,
         required : true,
         trim : true,
+        lowercase : true,
         unique : true
     },
     description : {
@@ -13,15 +14,15 @@ const teamSchema = new mongoose.Schema({
         trim : true
     },
     owner : {
-        type : mongoose.SchemaTypes.ObjectId,
+        type : String,
         required : true,
     },
     members : {
-        type : [mongoose.SchemaTypes.ObjectId],
+        type : [String],
         required : true
     },
     projects : {
-        type : [mongoose.SchemaTypes.ObjectId],
+        type : [String],
         default : []
     }
 } , {

@@ -4,7 +4,9 @@ const projectSchema = new mongoose.Schema({
     name : {
         type : String,
         required : true,
-        trim : true
+        trim : true,
+        lowercase : true,
+        unique : true
     },
     description : {
         type : String,
@@ -18,21 +20,16 @@ const projectSchema = new mongoose.Schema({
         type : [String],
     },
     owner : {
-        type : mongoose.Types.ObjectId,
+        type : String,
         required : true,
     },
     team : {
-        type : mongoose.Types.ObjectId,
+        type : String,
     },
     private : {
         type : Boolean,
         default : false
-    },
-    show : {
-        type : Boolean,
-        default : true
     }
-
 } , {
     timestamps : true
 })

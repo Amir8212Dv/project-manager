@@ -8,6 +8,7 @@ const checkAuthToken = async (req , res , next) => {
         const user = await userModel.findById(checkToken._id)
         if (!user.token.includes(token)) throw ''
         req.userId = checkToken._id
+        req.username = user.username
         next()
     } catch (error) {
         next({message : 'please login again' , status : 400})
