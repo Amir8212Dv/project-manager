@@ -3,12 +3,48 @@ import userModel from "../models/user.js"
 import teamModel from "../models/team.js"
 import path from 'path'
 import fs from 'fs'
+import createImageLink from "../../utils/createImageLink.js"
 
 class ProjectControllers {
+    #aggregatePipeline = [
+        {
+            $lookup : {
+                from : 'users',
+                localField : 'owner',
+                foreignField : 'username',
+                as : 'owner'
+            }
+        },
+        {
+            $unwind : '$owner'
+        },
+        {
+            $lookup : {
+                from : 'teams',
+                localField : 'team',
+                foreignField : 'name',
+                as : 'team'
+            }
+        },
+        {
+            $project : {
+                'owner.password' : 0,
+                'owner.projects' : 0,
+                'owner.token' : 0,
+                'owner.role' : 0,
+                'owner.inviteRequests' : 0,
+                'owner.__v' : 0,
+                'team.projects' : 0,
+                'team.__v' : 0,
+            }
+        }
+    ]
     async createProject(req , res , next) {
         try {
 
-            const project = await projectModel.create({...req.body , owner : req.userId})
+            const project = await projectModel.create({...req.projectData , owner : req.username})
+            
+            const user = await userModel.findByIdAndUpdate(req.userId , {$addToSet : {projects : project.name}})
 
             res.status(201).send({
                 status : 201,
@@ -17,24 +53,25 @@ class ProjectControllers {
             })
 
         } catch (error) {
+            if(error?.code === 11000) return next({message : `entered ${Object.keys(error.keyValue)[0]} already exists` , status : 400})
             next(error)
         }
     }
 
 
-
-    // check for projects existense
-    // send link for images when  sending  get  request
-
-
     async uploadImage(req , res , next) {
         try {
-            const project = await projectModel.findByIdAndUpdate(req.params.projectId , {image : path.join('images' , req.file.filename)} , {returnDocument : 'after'})
+            const project = await projectModel.findOneAndUpdate(
+                {name : req.params.projectName , owner : req.username} , 
+                {image : path.join('images' , req.file.filename)} , 
+                {returnDocument : 'after'}
+            )
+            if(!project) throw {message : 'project not found' , status : 400}
 
             res.status(201).send({
                 status : 201,
                 success : true,
-                image : `${req.protocol}://${req.headers.host}/${project.image.replace('\\' , '/')}`
+                image : createImageLink(req, project.image)
             })
             
         } catch (error) {
@@ -44,8 +81,14 @@ class ProjectControllers {
 
     async getAllProjects(req , res , next) {
         try {
-            const user = await userModel.findById(req.userId , {team : 1})
-            const projects = await projectModel.find({$or : [{owner : req.userId} , {$in : {team : user.team}}]})
+            const projects = await projectModel.aggregate([
+                {
+                    $match : {
+                        owner : req.username
+                    }
+                },
+                ...this.#aggregatePipeline
+            ])
 
             res.send({
                 status : 200,
@@ -56,71 +99,69 @@ class ProjectControllers {
             next(error)
         }
     }
-    async getProjectById(req , res , next) {
+    async getProjectByName(req , res , next) {
         try {
-            const project = await projectModel.find({_id : req.params.projectId , owner : userId})
-            if(!project) throw {message : 'project not found' , status : 400}
-            // if(project.private || !project.show) {
-            //     const user = await userModel.findById(req.userId)
-            //     if (!project.owner === user._id || !user.team.includes(project.team)) throw {message : 'this project is private' , status : 400}
-            // }
+            const user = await userModel.findById(req.userId , {teams : 1})
+            const [project] = await projectModel.aggregate([
+                {
+                    $match : {
+                        $and : [
+                            {name : req.params.projectName},
+                            {$or : [{owner : req.username} , {team : {$in : user.teams}} ] }
+                        ]
+                    }
+                },
+                ...this.#aggregatePipeline
+            ])
+            if(!project) throw {message : 'project not found' , error : 400}
+
             res.send({
                 status : 200,
                 success : true,
                 project
             })
         } catch (error) {
-            next(error)
-        }
-    }
-    async getAllProjectOfTeam(req , res , next) {
-        try {
-
-            const user = await userModel.findById(req.userId , {team : 1})
-            const projects = await projectModel.find({$and : [{team : req.params.teamId} , {$or : [{owner : req.userId} , {private : false , show : true} , {team : {$in : user.team}}]}]})
-
-            res.send({
-                status : 200,
-                success : true,
-                projects
-            })
-        } catch (error) {
-            next(error)
-        }
-    }
-    async getAllProjectOfUser(req , res , next) { 
-        try {
-
-            const user = await userModel.findById(req.userId , {team : 1})
-            const project = await projectModel.find({$and : [{owner : req.params.userId} , {$or : [{private : false , show : true} , {team : {$in : user.team}} , {owner : req.userId}]}]})
-            res.send({
-                status : 200,
-                success : true,
-                project
-            })
-        } catch (error) {
-            console.log(error)
             next(error)
         }
     }
     async updateProject(req , res , next) {
         try {
-            
-            const updateProject = await projectModel.findByIdAndUpdate(req.params.projectId , req.updateData , {returnDocument : 'after'})
+            const user = await userModel.findById(req.userId , {teams : 1})
 
+            const projectFilter = {name : req.params.projectName , $or : [{owner : req.username} , {team : {$in : user.teams}}  ]}
+            if(req.projectData.name) projectFilter.owner = req.username
+            
+            const updatedProject = await projectModel.findOneAndUpdate(
+                projectFilter , 
+                req.projectData ,
+                {returnDocument : 'after'})
+
+            if(!updatedProject) throw {message : 'project not found' , status : 400}
+
+            
+            if(req.projectData.name && updatedProject.team) {
+                const team = await teamModel.findOne({name : updatedProject.team})
+                const index = team.projects.indexOf(req.params.projectName)
+                team.projects[index] = req.projectData.name
+                await team.save()
+            }
             res.status(201).send({
                 status : 201,
                 success : true,
-                project : updateProject
+                project : updatedProject
             })
         } catch (error) {
+            if(error?.code === 11000) return next({message : `entered ${Object.keys(error.keyValue)[0]} already exists` , status : 400})
             next(error)
         }
     }
     async removeProject(req , res , next) {
         try {
-            const deletedProject = await projectModel.findByIdAndDelete(req.params.projectId)
-            const deleteProjectFromTeam = await teamModel.updateOne({_id : deletedProject.team} , {$pull : {projects : deletedProject._id}})
+            const deletedProject = await projectModel.findOneAndDelete(
+                {name : req.params.projectName , owner : req.username}
+            )
+            if(!deletedProject) throw {message : 'project not found' , status : 400}
+            const deleteProjectFromTeam = await teamModel.updateOne({name : deletedProject.team} , {$pull : {projects : deletedProject.name}})
 
             if(deletedProject.image) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , deletedProject.image))
             res.send({

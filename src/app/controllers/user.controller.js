@@ -3,12 +3,69 @@ import projectModel from '../models/project.js'
 import teamModel from '../models/team.js'
 import userModel from "../models/user.js"
 import fs from 'fs'
-import mongoose from 'mongoose'
+import createImageLink from '../../utils/createImageLink.js'
+
 
 class UserControllers {
-    async getProfile(req , res , next) {
+    #aggregatePipeline = [
+        {
+            $lookup : {
+                from : 'teams',
+                localField : 'teams',
+                foreignField : 'name',
+                as : 'teams'
+            }
+        },
+        {
+            $lookup : {
+                from : 'projects',
+                localField : 'projects',
+                foreignField : 'name',
+                as : 'projects'
+            }
+        },
+        {
+            $project : {
+                __v : 0,
+                password : 0,
+                token : 0,
+                'teams.__v' : 0,
+                'projects.__v' : 0
+            }
+        }
+    ]
+    async getMyProfile(req , res , next) {
         try {
-            const user = await userModel.findById(req.userId , {__v : 0 , password : 0 , token : 0 })
+            const [user] = await userModel.aggregate([
+                {
+                    $match : {
+                        username : req.username
+                    }
+                },
+                ...this.#aggregatePipeline
+            ])
+
+            res.send({
+                status : 200,
+                success : true,
+                user : user
+            })
+        } catch (error) {
+            next(error)
+        }
+    }
+    async getUserByUsername(req , res , next) {
+        try {
+            const [user] = await userModel.aggregate([
+                {
+                    $match : {
+                        username : req.params.username
+                    }
+                },
+                ...this.#aggregatePipeline
+            ])
+            if(!user) throw {message : 'user not found' , status : 400}
+
             res.send({
                 status : 200,
                 success : true,
@@ -18,16 +75,16 @@ class UserControllers {
             next(error)
         }
     }
+
     async uploadAvatar(req , res , next) {
         try {  
-
             const user = await userModel.findByIdAndUpdate(req.userId , {avatar : path.join('images' , req.file.filename)} , {returnDocument : 'after'})
     
             if(!user) throw {message : 'upload avatar faild' , status : 500}
             res.status(201).send({
                 status : 201,
                 success : true,
-                images : `${req.protocol}://${req.headers.host}/${user.avatar.replace('\\' , '/')}`
+                images : createImageLink(req , user.avatar)
             })
             
         } catch (error) {
@@ -36,21 +93,23 @@ class UserControllers {
     }
     async updateProfile(req , res , next) {
         try {
-            const user = await userModel.updateOne({_id : req.userId} , req.updateData , {returnDocument : 'after'})
+            const user = await userModel.updateOne({_id : req.userId} , req.userData , {returnDocument : 'after'})
+            
             res.send({
                 status : 200,
                 success : true,
-                message : 'image uploaded successfully'
+                message : 'profile updated successfully',
             })
 
         } catch (error) {
+            if(error?.code === 11000) return next({message : `entered ${Object.keys(error.keyValue)[0]} already exists` , status : 400})
             next(error)
         }
     }
     async addSkills(req , res , next) {
         try {
             const user = await userModel.findById(req.userId)
-            req.body.map(newSkill => !user.skills.includes(newSkill) && user.skills.push(newSkill))
+            req.userData.skills.forEach(newSkill => !user.skills.includes(newSkill) && user.skills.push(newSkill))
             await user.save()
             res.send({
                 status : 200,
@@ -63,8 +122,8 @@ class UserControllers {
     }
     async removeSkills(req , res , next) {
         try {
-            const user = await userModel.findById(req.userId)
-            user.skills = user.skills.filter(skill => !req.body.includes(skill))
+            const user = await userModel.findByIdAndUpdate(req.userId)
+            user.skills = user.skills.filter(skill => !req.userData.skills.includes(skill))
             await user.save()
             res.send({
                 status : 200,
@@ -78,13 +137,17 @@ class UserControllers {
     async deleteUser(req , res , next) {
         try {
             const deletedUser = await userModel.findByIdAndDelete(req.userId)
-            const deleteTeams = await teamModel.deleteMany({owner : req.userId})
-            const deleteProjects = await projectModel.find({owner : req.userId})
-            await projectModel.deleteMany({owner : req.userId})
 
-            const deleteFromTeamMembers = await teamModel.updateMany({members : {$in : req.userId}} , {$pull : {members : req.userId}})
+            const deleteTeams = await teamModel.find({owner : req.username})
+            await teamModel.deleteMany({owner : req.username})
+            deleteTeams.forEach(async team => {
+                await userModel.updateMany({teams : team.name} , {$pull : {teams : team.name}})
+            })
+            const deleteProjects = await projectModel.find({owner : req.username})
+            await projectModel.deleteMany({owner : req.username})
 
-            console.log(process.argv[1] , deletedUser)
+            const deleteFromTeamMembers = await teamModel.updateMany({members : req.username} , {$pull : {members : req.username}})
+
             if(deletedUser.avatar) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , deletedUser.avatar))
             deleteProjects.map(project => {
                 if(project.image) fs.unlinkSync(path.join(process.argv[1] , '..' , '..' , 'public' , project.image))
@@ -103,26 +166,23 @@ class UserControllers {
     async acceptInviteToTeam(req , res , next) {
         try {
             
-            const user = await userModel.findOne({'inviteRequests._id' : req.params.inviteId , owner : req.userId})
-            if(!user) throw {message : 'user with this inviteId not found' , status : 400}
+            const user = await userModel.findOne({username : req.username ,'inviteRequests._id' : req.params.inviteId })
+            if(!user) throw {message : 'request not found' , status : 400}
 
-            console.log(user)
             await user.inviteRequests.forEach(async request => {
                 if(request._id.toString() === req.params.inviteId) {
-                    if(request.status === 'ACCEPTED') throw {message : 'user is already in team' , status :400}
-                    if(request.status === 'REJECTED') throw {message : 'this invite not exists any more'}
+                    if(request.status !== 'PENDING') throw {message : 'this invite already checked' , status :400}
                     request.status = 'ACCEPTED'
-                    const team = await teamModel.findByIdAndUpdate(request.teamId , {$addToSet : {members : req.userId}})
-                    user.team.push(request.teamId)
+                    const team = await teamModel.findOneAndUpdate({name : request.teamName} , {$addToSet : {members : req.username}})
+                    user.teams.push(request.teamName)
                     await user.save()
                 }
             })
 
-            console.log(user)
             res.send({
                 status : 200,
                 success : true , 
-                teams : user.team
+                message : 'you joined team successfully'
             })
         } catch (error) {
             next(error)
@@ -130,23 +190,23 @@ class UserControllers {
     }
     async rejectInviteToTeam(req , res , next) {
         try {
-            
-            const user = await userModel.findOne({owner : req.userId , 'inviteRequests._id': req.params.inviteId})
-            if(!user) throw {message : 'use with this inviteId not found' , status : 400}
+            const user = await userModel.findOne({username : req.username , 'inviteRequests._id': req.params.inviteId})
+            if(!user) throw {message : 'request not found' , status : 400}
 
-            await user.inviteRequests.forEach(async request => {
+            user.inviteRequests.forEach( request => {
                 if(request._id.toString() === req.params.inviteId) {
-                    if(request.status === 'ACCEPTED') throw {message : 'this invite is already accepted' , status : 400}
-                    user.inviteRequests = user.inviteRequests.filter(re => re._id !== request._id)
-                    await user.save()
+                    if(request.status !== 'PENDING') throw {message : 'this invite already checked' , status : 400}
+                    request.status = 'REJECTED'
+                    user.save().then(() => {
+                        res.send({
+                            status : 200,
+                            success : true,
+                            message : 'invite request to join team rejected successfully !'
+                        })
+                    })
                 }
             })
 
-            res.send({
-                status : 200,
-                success : true,
-                message : 'invite request to join team rejected successfully !'
-            })
         } catch (error) {
             next(error)
         }
@@ -154,14 +214,13 @@ class UserControllers {
 
     async getInviteRequests(req ,res , next) {
         try {
-            const user = await userModel.aggregate([
+            const [user] = await userModel.aggregate([
                 {
-                    $match : { _id : mongoose.Types.ObjectId(req.userId) }
+                    $match : { username : req.username }
                 },
                 {
                     $project : {
                         inviteRequests : 1,
-    
                         _id : 0,
                         requests : {
                             $filter : {
@@ -176,12 +235,11 @@ class UserControllers {
                 }
 
             ])
-            console.log(req.query.status)
             
             res.send({
                 status : 200,
                 success : true,
-                inviteRequests : req.query.status ? user[0].requests : user[0].inviteRequests
+                inviteRequests : req.query.status ? user.requests : user.inviteRequests
             })
         } catch (error) {
             next(error)

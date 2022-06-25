@@ -8,14 +8,8 @@ import multer from 'multer'
 class AuthControllers {
     register(req , res , next) {
         try {
-
-            const { first_name , last_name , username , password , mobile , email , role} = req.body
-            if(!first_name || !last_name || !username || !password || !mobile || !email || !role) throw {message : 'please enter all fields' , status : 400}
-
-            const hashedPassword = hashPassword(password)
-            
-            userModel.create({first_name , last_name , username , password : hashedPassword , mobile , email , role , token : []})
-                .then(async user => {
+            userModel.create({...req.userData , token : []})
+            .then(async user => {
                     const token = createToken({_id : user._id.toString()})
                     user.token.push(token)
                     await user.save()
@@ -27,8 +21,10 @@ class AuthControllers {
                             token
                         }
                     })
-                }).catch(err => {err?.code === 11000 && next({message : `entered ${Object.keys(err.keyValue)[0]} already exists` , status : 400})})
-
+                }).catch(err => {
+                    if(err?.code === 11000) next({message : `entered ${Object.keys(err.keyValue)[0]} already exists` , status : 400})
+                    else throw err
+                })
         } catch (error) {
             next(error)
         }
@@ -45,7 +41,7 @@ class AuthControllers {
             user.token.push(token)
             await user.save()
             
-            res.status(200).send({
+            res.send({
                 status : 200,
                 success : true,
                 data : {
@@ -75,15 +71,13 @@ class AuthControllers {
     }
     async resetPassword(req , res , next) {
         try {
-            const {username , password} = req.body
-            const newPassword = hashPassword(password)
-            const user = await userModel.findOneAndUpdate({username} , {password : newPassword})
-            if(!user) throw {message : 'username not found' , status : 400}
+            const user = await userModel.findOneAndUpdate({_id : req.userId} , {password : req.userData.password})
+            if(!user) throw {message : 'user not found' , status : 400}
             res.status(201).send({
                 status : 201,
                 success : true,
                 data : {
-                    message : 'password changes successfully!'
+                    message : 'password changed successfully!'
                 }
             })
 

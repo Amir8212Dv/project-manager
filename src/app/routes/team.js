@@ -1,24 +1,23 @@
 import express from "express";
 import TeamControllers from "../controllers/team.controller.js";
-import { validateData } from "../middlewares/team.js";
-import deleteTeamAccess from "../middlewares/teamAccess.js";
+import { validateTeamData } from "../middlewares/team.js";
 
 const router = express.Router()
 
-router.post('/create' , validateData , TeamControllers.createTeam)
+router.get('/all' , TeamControllers.getAllTeams.bind(TeamControllers))
 
-router.post('/addProject/:teamid' , TeamControllers.addProject)
+router.get('/:teamName' , TeamControllers.getTeamByname.bind(TeamControllers))
 
-router.delete('/' , deleteTeamAccess , TeamControllers.removeTeam)
+router.post('/create' , validateTeamData , TeamControllers.createTeam)
 
-router.get('/all' , TeamControllers.getAllTeams)
+router.post('/addProject/:teamName' , TeamControllers.addProject)
 
-router.get('/:teamId' , TeamControllers.getTeamByIdOrName)
+router.post('/inviteUser/:teamName' , TeamControllers.inviteUserToTeam)
 
-router.patch('/:teamId' , validateData , TeamControllers.updateTeam)
+router.patch('/:teamName' , validateTeamData , TeamControllers.updateTeam)
 
-router.patch('/removeUser/:teamId' , TeamControllers.removeUserFromTeam)
+router.patch('/removeUser/:teamName' , TeamControllers.removeUserFromTeam)
 
-router.post('/inviteUser/:teamId' , TeamControllers.inviteUserToTeam)
+router.delete('/:teamName' , TeamControllers.removeTeam)
 
 export default router

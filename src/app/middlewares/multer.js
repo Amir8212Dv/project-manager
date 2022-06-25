@@ -8,7 +8,7 @@ const uploadFile = multer.diskStorage({
         cb(null , path.join(process.argv[1] , '..' , '..'  , 'public' , 'images'))
     },
     filename : (req , file , cb) => {
-        const imageName = req.baseUrl === '/user' ? req.userId : req.baseUrl === '/project' && req.params.projectId
+        const imageName = req.baseUrl === '/user' ? req.username : req.baseUrl === '/project' && req.params.projectName
         cb(null , `${imageName}.${file.mimetype.split('/')[1]}`)
     }
 })

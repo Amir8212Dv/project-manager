@@ -1,27 +1,21 @@
 import express from "express";
 import multer from "../middlewares/multer.js";
 import ProjectControllers from "../controllers/project.controller.js";
-import sortBodyData from "../middlewares/sortBodyData.js";
-import { projectDeleteAccess, projectUpdateAccess } from "../middlewares/projectAccess.js";
-
+import { validateProjectData } from "../middlewares/project.js";
 
 const router = express.Router()
 
-router.post('/' , ProjectControllers.createProject)
+router.get('/allProjects' , ProjectControllers.getAllProjects.bind(ProjectControllers))
 
-router.post('/image/:projectId' , projectUpdateAccess , multer.single('image') , ProjectControllers.uploadImage)
+router.get('/:projectName' , ProjectControllers.getProjectByName.bind(ProjectControllers))
 
-router.get('/:projectId' , ProjectControllers.getProjectById)
+router.post('/createProject' ,validateProjectData , ProjectControllers.createProject)
 
-router.get('/:teamId' , ProjectControllers.getAllProjectOfTeam)
+router.post('/image/:projectName' , multer.single('image') , ProjectControllers.uploadImage)
 
-router.get('/allProjects' , ProjectControllers.getAllProjects)
+router.patch('/updateProject/:projectName' , validateProjectData , ProjectControllers.updateProject)
 
-router.get('/:userId' , ProjectControllers.getAllProjectOfUser)
-
-router.patch('/:projectId' , projectUpdateAccess , sortBodyData , ProjectControllers.updateProject)
-
-router.delete('/:projectId' , projectDeleteAccess , ProjectControllers.removeProject)
+router.delete('/deleteProject/:projectName' , ProjectControllers.removeProject)
 
 
 
