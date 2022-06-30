@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import userModel from '../models/user.js'
+
 const checkAuthToken = async (req , res , next) => {
     try {
         const token = req.headers.authorization.split('Bearer ')[1]

@@ -45,8 +45,11 @@ class Application {
             })
         })
         this.#app.use((error , req , res , next) => {
-            const status = error?.status || 500
-            const message = error?.message || 'Internal Server Error!'
+            const status = error.code === 11000 ? 400 : error?.status || 500
+
+            const message = error.code === 11000 ? `entered ${Object.keys(error.keyValue)[0]} already exists` :
+            error?.message || 'Internal Server Error!'
+
             res.status(status).send({
                 status,
                 success : false,

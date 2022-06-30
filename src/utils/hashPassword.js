@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 
-const hashPassword = (data) => {
+const hashPassword = data => {
     return bcrypt.hashSync(data , 8)
 }
 

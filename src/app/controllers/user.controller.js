@@ -102,7 +102,7 @@ class UserControllers {
             })
 
         } catch (error) {
-            if(error?.code === 11000) return next({message : `entered ${Object.keys(error.keyValue)[0]} already exists` , status : 400})
+            // if(error?.code === 11000) return next({message : `entered ${Object.keys(error.keyValue)[0]} already exists` , status : 400})
             next(error)
         }
     }
